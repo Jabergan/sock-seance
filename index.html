@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sock Séance — Hackyard Yard #4</title>
+<style>
+  :root {
+    --bg: #0c0a12;
+    --ink: #f4efe6;
+    --muted: #a89bb8;
+    --candle: #e7b15a;
+    --ghost: #d7e7ff;
+    --good: #7ddea2;
+    --bad: #e07a7a;
+    --panel: #17141f;
+    --line: #2c2638;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "Iowan Old Style", Palatino, Georgia, serif;
+    background:
+      radial-gradient(900px 500px at 50% -10%, #2a2140 0%, transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    min-height: 100%;
+  }
+  header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 16px; padding: 22px 28px 8px; flex-wrap: wrap;
+  }
+  h1 { font-weight: 500; letter-spacing: 0.04em; margin: 0; font-size: 28px; }
+  h1 span { color: var(--candle); }
+  .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .scorebox { text-align: right; }
+  .scorebox strong { font-size: 28px; color: var(--candle); font-variant-numeric: tabular-nums; }
+  main {
+    display: grid;
+    grid-template-columns: minmax(320px, 1.3fr) minmax(280px, 0.9fr);
+    gap: 18px;
+    padding: 12px 28px 32px;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; padding: 12px 16px 28px; }
+    header { padding: 18px 16px 8px; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .stage {
+    position: relative;
+    background: #07060b;
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    display: grid;
+    place-items: center;
+  }
+  video, canvas.grab {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  }
+  canvas.grab { display: none; }
+  .reticle {
+    position: absolute; width: 120px; height: 120px; border-radius: 50%;
+    border: 2px dashed rgba(231, 177, 90, 0.85);
+    box-shadow: 0 0 0 2000px rgba(0,0,0,0.28);
+    pointer-events: none;
+  }
+  .reticle::after {
+    content: "hold sock here";
+    position: absolute; left: 50%; top: calc(100% + 8px);
+    transform: translateX(-50%);
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--candle); white-space: nowrap; font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .live-chip {
+    position: absolute; left: 12px; top: 12px;
+    background: rgba(12,10,18,0.72);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 10px;
+    display: flex; align-items: center; gap: 8px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 12px;
+  }
+  .swatch {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.35);
+    background: #333;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button, .mode {
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    border-radius: 999px; border: 1px solid var(--line);
+    background: #221c2e; color: var(--ink);
+    padding: 10px 14px; cursor: pointer; font-size: 14px;
+  }
+  button.primary { background: #3a2a18; border-color: #6a4e28; color: #f6e2c0; }
+  button.good { background: #163024; border-color: #2f6a49; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  label.slider {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    margin-top: 12px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px;
+    color: var(--muted);
+  }
+  input[type="range"] { flex: 1; accent-color: var(--candle); }
+  .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .slot {
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px;
+    min-height: 84px;
+  }
+  .slot .name { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .slot .hex { font-variant-numeric: tabular-nums; margin-top: 6px; }
+  .slot .blob { width: 100%; height: 28px; border-radius: 8px; margin-top: 8px; background: #222; border: 1px solid #333; }
+  .verdict {
+    margin-top: 10px; min-height: 24px;
+    font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px;
+  }
+  .verdict.match { color: var(--good); }
+  .verdict.miss { color: var(--bad); }
+  .pile-wrap { display: flex; align-items: flex-end; gap: 6px; min-height: 92px; flex-wrap: wrap; }
+  .sock {
+    width: 28px; height: 46px; border-radius: 14px 14px 10px 10px;
+    background: linear-gradient(#cfc6d8, #8d849c);
+    position: relative; transform-origin: bottom center;
+    box-shadow: inset -6px 0 0 rgba(0,0,0,0.15);
+  }
+  .sock::after {
+    content: ""; position: absolute; left: -6px; bottom: 0;
+    width: 16px; height: 16px; border-radius: 8px;
+    background: inherit; box-shadow: inset -3px 0 0 rgba(0,0,0,0.12);
+  }
+  .sock.gone { opacity: 0; transform: translateY(-30px) scale(0.6); transition: 0.6s ease; }
+
+  /* Ghost container */
+  .ghosts {
+    height: 140px; position: relative; margin: 8px 0 4px;
+    overflow: hidden;
+  }
+  .ghost {
+    position: absolute; bottom: 8px; font-size: 42px;
+    filter: drop-shadow(0 0 8px rgba(215,231,255,0.45));
+    user-select: none;
+  }
+  .ghost.a { left: 10%; }
+  .ghost.b { right: 10%; }
+
+  /* MATCH — ghosts fly upward and vanish */
+  @keyframes ghostFlyUp {
+    0%   { transform: translateY(0) scale(1);       opacity: 1; }
+    25%  { transform: translateY(-18px) scale(1.2); opacity: 1; }
+    100% { transform: translateY(-160px) scale(0.2); opacity: 0; }
+  }
+  .ghost.fly-up {
+    animation: ghostFlyUp 0.9s ease-in forwards;
+  }
+
+  /* NO MATCH — shake outward in opposite dirs, then plop back */
+  @keyframes ghostShakeA {
+    0%   { transform: translateX(0)    rotate(0deg)   translateY(0); }
+    12%  { transform: translateX(22px)  rotate(-14deg) translateY(-5px); }
+    28%  { transform: translateX(-15px) rotate(10deg)  translateY(-2px); }
+    44%  { transform: translateX(16px)  rotate(-7deg)  translateY(-2px); }
+    60%  { transform: translateX(-9px)  rotate(4deg)   translateY(-1px); }
+    76%  { transform: translateX(5px)   rotate(-2deg)  translateY(0); }
+    88%  { transform: translateX(0)     rotate(0deg)   translateY(-7px); }
+    100% { transform: translateX(0)     rotate(0deg)   translateY(0); }
+  }
+  @keyframes ghostShakeB {
+    0%   { transform: translateX(0)    rotate(0deg)  translateY(0); }
+    12%  { transform: translateX(-22px) rotate(14deg) translateY(-5px); }
+    28%  { transform: translateX(15px)  rotate(-10deg) translateY(-2px); }
+    44%  { transform: translateX(-16px) rotate(7deg)  translateY(-2px); }
+    60%  { transform: translateX(9px)   rotate(-4deg) translateY(-1px); }
+    76%  { transform: translateX(-5px)  rotate(2deg)  translateY(0); }
+    88%  { transform: translateX(0)     rotate(0deg)  translateY(-7px); }
+    100% { transform: translateX(0)     rotate(0deg)  translateY(0); }
+  }
+  .ghost.shake-a { animation: ghostShakeA 0.85s ease forwards; }
+  .ghost.shake-b { animation: ghostShakeB 0.85s ease forwards; }
+
+  .log {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; line-height: 1.45;
+    max-height: 220px; overflow: auto;
+    background: #0e0c14; border-radius: 10px; padding: 8px 10px;
+    border: 1px solid var(--line); color: #d9d0c4;
+  }
+  .log div { border-bottom: 1px solid #221c2c; padding: 3px 0; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .swatches button {
+    width: 42px; height: 42px; border-radius: 10px; padding: 0;
+    border: 2px solid rgba(255,255,255,0.25);
+  }
+  .hint { color: var(--muted); font-size: 13px; line-height: 1.45; }
+  .end {
+    position: fixed; inset: 0; background: rgba(6,5,10,0.88);
+    display: none; place-items: center; z-index: 5;
+  }
+  .end.show { display: grid; }
+  .end .card {
+    background: #17141f; border: 1px solid #6a4e28; border-radius: 18px;
+    padding: 28px; max-width: 460px; text-align: center;
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Sock <span>Séance</span></h1>
+    <div class="sub">Hackyard Yard #4 · solid-color pair matching · points only move when a pair matches</div>
+  </div>
+  <div class="scorebox">
+    <div class="sub">matched pairs</div>
+    <strong id="score">0</strong>
+    <div class="sub">pile left: <span id="pileCount">8</span></div>
+  </div>
+</header>
+<main>
+  <section class="panel">
+    <div class="stage" id="stage">
+      <video id="video" playsinline autoplay muted></video>
+      <canvas class="grab" id="grab"></canvas>
+      <div class="reticle" id="reticle"></div>
+      <div class="live-chip">
+        <div class="swatch" id="liveSwatch"></div>
+        <span id="liveLabel">camera idle</span>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="primary" id="camBtn" type="button">Start camera</button>
+      <button id="demoBtn" type="button">Demo mode (no camera)</button>
+      <button id="lockA" type="button" disabled style="font-size:18px;padding:16px 20px;width:100%">📸 Lock sock A</button>
+      <button id="lockB" type="button" disabled style="font-size:18px;padding:16px 20px;width:100%">📸 Lock sock B</button>
+      <button id="judge" class="good" type="button" disabled style="font-size:18px;padding:16px 20px;width:100%">👻 Ask the spirits</button>
+      <button id="resetTry" type="button">Clear attempt</button>
+    </div>
+    <label class="slider">
+      Tolerance <span id="tolVal">25</span>
+      <input id="tol" type="range" min="8" max="120" value="25" />
+      <span>stricter ← → looser</span>
+    </label>
+    <p class="hint" id="modeHint">Camera mode samples the circle. Demo mode uses the swatches as the held-up sock. A reunion only happens if A and B are within tolerance.</p>
+    <div id="demoBox" class="hidden">
+      <div class="sub" style="margin-top:10px">Click a swatch to present that color as the sock in the circle.</div>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <div class="slots">
+      <div class="slot">
+        <div class="name">Sock A</div>
+        <div class="hex" id="hexA">—</div>
+        <div class="blob" id="blobA"></div>
+      </div>
+      <div class="slot">
+        <div class="name">Sock B</div>
+        <div class="hex" id="hexB">—</div>
+        <div class="blob" id="blobB"></div>
+      </div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+  </section>
+  <section class="panel">
+    <div class="sub">Waiting spirits</div>
+    <div class="ghosts" aria-hidden="true">
+      <div class="ghost a" id="ghostA">👻</div>
+      <div class="ghost b" id="ghostB">👻</div>
+    </div>
+    <div class="sub">Unpaired pile</div>
+    <div class="pile-wrap" id="pile"></div>
+    <p class="hint">The pile shrinks by two only after a match. Mismatches do not score.</p>
+    <div class="sub" style="margin-top:12px">Detection log</div>
+    <div class="log" id="log"></div>
+  </section>
+</main>
+<div class="end" id="end">
+  <div class="card">
+    <div style="font-size:42px">🕯️</div>
+    <h2>The pile is gone.</h2>
+    <p>Every solid sock found its other half. Pairs matched: <strong id="endScore">0</strong>.</p>
+    <button class="primary" id="again" type="button">Hold another séance</button>
+  </div>
+</div>
+<script>
+const PILE_START = 8;
+const swatchColors = [
+  ["#c23b3b", "red"],
+  ["#d4722b", "orange"],
+  ["#e2c14a", "yellow"],
+  ["#3f8f56", "green"],
+  ["#2f6fbf", "blue"],
+  ["#1a2a6b", "navy"],
+  ["#141418", "black"],
+  ["#f4f1ea", "white"],
+  ["#8a8d96", "gray"],
+  ["#c45b8a", "pink"]
+];
+
+const video = document.getElementById("video");
+const grab = document.getElementById("grab");
+const ctx = grab.getContext("2d", { willReadFrequently: true });
+const liveSwatch = document.getElementById("liveSwatch");
+const liveLabel = document.getElementById("liveLabel");
+const logEl = document.getElementById("log");
+const pileEl = document.getElementById("pile");
+const ghostA = document.getElementById("ghostA");
+const ghostB = document.getElementById("ghostB");
+
+let mode = "camera";
+let stream = null;
+let current = null;
+let sockA = null;
+let sockB = null;
+let pile = PILE_START;
+let score = 0;
+let raf = 0;
+let presenting = null;
+let animating = false;
+
+function hex(c) {
+  const h = (n) => n.toString(16).padStart(2, "0");
+  return "#" + h(c.r) + h(c.g) + h(c.b);
+}
+function rgb(hexStr) {
+  const n = hexStr.replace("#", "");
+  return { r: parseInt(n.slice(0, 2), 16), g: parseInt(n.slice(2, 4), 16), b: parseInt(n.slice(4, 6), 16) };
+}
+function dist(a, b) {
+  const r = a.r - b.r, g = a.g - b.g, bl = a.b - b.b;
+  return Math.sqrt(2 * r * r + 4 * g * g + 3 * bl * bl);
+}
+function tol() { return Number(document.getElementById("tol").value); }
+
+function log(line) {
+  const d = document.createElement("div");
+  const t = new Date();
+  const stamp = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2, "0")).join(":");
+  d.textContent = stamp + "  " + line;
+  logEl.prepend(d);
+}
+
+function renderPile() {
+  pileEl.innerHTML = "";
+  for (let i = 0; i < pile; i++) {
+    const s = document.createElement("div");
+    s.className = "sock";
+    s.style.transform = "rotate(" + ((i % 5) - 2) * 8 + "deg)";
+    s.style.background = i % 2 ? "linear-gradient(#d9d0c2,#8d8478)" : "linear-gradient(#cfc6d8,#8d849c)";
+    pileEl.appendChild(s);
+  }
+  document.getElementById("pileCount").textContent = String(pile);
+  document.getElementById("score").textContent = String(score);
+}
+
+function setSlot(which, color) {
+  const hexEl = document.getElementById(which === "A" ? "hexA" : "hexB");
+  const blob = document.getElementById(which === "A" ? "blobA" : "blobB");
+  if (!color) {
+    hexEl.textContent = "—";
+    blob.style.background = "#222";
+    return;
+  }
+  hexEl.textContent = hex(color);
+  blob.style.background = hex(color);
+}
+
+function sampleFrame() {
+  if (!video.videoWidth) return null;
+  const w = video.videoWidth, h = video.videoHeight;
+  grab.width = w; grab.height = h;
+  ctx.drawImage(video, 0, 0, w, h);
+  const size = Math.round(Math.min(w, h) * 0.18);
+  const x = Math.round(w / 2 - size / 2);
+  const y = Math.round(h / 2 - size / 2);
+  const data = ctx.getImageData(x, y, size, size).data;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < data.length; i += 16) {
+    r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+  }
+  return { r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n) };
+}
+
+function showLive(color, label) {
+  current = color;
+  if (!color) {
+    liveSwatch.style.background = "#333";
+    liveLabel.textContent = label || "no sample";
+    return;
+  }
+  liveSwatch.style.background = hex(color);
+  liveLabel.textContent = (label || "live") + " " + hex(color);
+}
+
+function loop() {
+  if (mode !== "camera") return;
+  const c = sampleFrame();
+  if (c) showLive(c, "live");
+  raf = requestAnimationFrame(loop);
+}
+
+async function startCamera() {
+  mode = "camera";
+  presenting = null;
+  document.getElementById("demoBox").classList.add("hidden");
+  document.getElementById("reticle").classList.remove("hidden");
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    document.getElementById("lockA").disabled = false;
+    document.getElementById("lockB").disabled = false;
+    log("camera started");
+    cancelAnimationFrame(raf);
+    loop();
+  } catch (err) {
+    log("camera blocked: " + err.name + " — open via https://");
+    liveLabel.textContent = "camera blocked";
+  }
+}
+
+function enterDemo() {
+  mode = "demo";
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null;
+  cancelAnimationFrame(raf);
+  video.srcObject = null;
+  document.getElementById("demoBox").classList.remove("hidden");
+  document.getElementById("reticle").classList.add("hidden");
+  document.getElementById("lockA").disabled = false;
+  document.getElementById("lockB").disabled = false;
+  showLive(null, "pick a swatch");
+  log("demo mode — swatches stand in for held-up socks");
+}
+
+function resetGhost(el) {
+  el.classList.remove("fly-up", "shake-a", "shake-b");
+  el.style.opacity = "";
+}
+
+function lock(which) {
+  if (animating) return;
+  let color = mode === "demo" ? presenting : current;
+  if (!color && mode === "camera") color = sampleFrame();
+  if (!color) {
+    log("nothing to lock — hold sock in circle and try again");
+    return;
+  }
+  if (which === "A") sockA = { ...color };
+  else sockB = { ...color };
+  setSlot(which, color);
+  log("locked " + which + " " + hex(color) + (mode === "demo" && presentingName ? " (" + presentingName + ")" : ""));
+  document.getElementById("judge").disabled = !(sockA && sockB);
+  document.getElementById("verdict").textContent = "";
+  document.getElementById("verdict").className = "verdict";
+}
+
+let presentingName = "";
+
+function animateMatch() {
+  animating = true;
+  resetGhost(ghostA);
+  resetGhost(ghostB);
+  void ghostA.offsetWidth;
+  void ghostB.offsetWidth;
+  ghostA.classList.add("fly-up");
+  ghostB.classList.add("fly-up");
+  setTimeout(() => {
+    score += 1;
+    pile = Math.max(0, pile - 2);
+    renderPile();
+    sockA = null; sockB = null;
+    setSlot("A", null); setSlot("B", null);
+    document.getElementById("judge").disabled = true;
+    setTimeout(() => {
+      resetGhost(ghostA);
+      resetGhost(ghostB);
+      animating = false;
+      if (pile === 0) {
+        document.getElementById("endScore").textContent = String(score);
+        document.getElementById("end").classList.add("show");
+        log("pile empty — séance complete, pairs " + score);
+      }
+    }, 200);
+  }, 950);
+}
+
+function animateMiss() {
+  animating = true;
+  resetGhost(ghostA);
+  resetGhost(ghostB);
+  void ghostA.offsetWidth;
+  void ghostB.offsetWidth;
+  ghostA.classList.add("shake-a");
+  ghostB.classList.add("shake-b");
+  setTimeout(() => {
+    animating = false;
+  }, 900);
+}
+
+function judge() {
+  if (!sockA || !sockB || animating) return;
+  const d = dist(sockA, sockB);
+  const limit = tol();
+  const matched = d <= limit;
+  const line = "A " + hex(sockA) + " vs B " + hex(sockB) + "  distance " + d.toFixed(1) + "  tolerance " + limit + "  " + (matched ? "MATCH" : "NO MATCH");
+  log(line);
+  const v = document.getElementById("verdict");
+  if (matched) {
+    v.className = "verdict match";
+    v.textContent = "The spirits agree. Distance " + d.toFixed(1) + " ≤ " + limit + ". Pair reunited.";
+    animateMatch();
+  } else {
+    v.className = "verdict miss";
+    v.textContent = "Not a pair. Distance " + d.toFixed(1) + " > " + limit + ". Pile unchanged.";
+    animateMiss();
+  }
+}
+
+function clearAttempt() {
+  if (animating) return;
+  sockA = null; sockB = null;
+  setSlot("A", null); setSlot("B", null);
+  document.getElementById("judge").disabled = true;
+  document.getElementById("verdict").textContent = "";
+  document.getElementById("verdict").className = "verdict";
+  resetGhost(ghostA);
+  resetGhost(ghostB);
+  log("attempt cleared");
+}
+
+function resetGame() {
+  pile = PILE_START;
+  score = 0;
+  animating = false;
+  clearAttempt();
+  renderPile();
+  document.getElementById("end").classList.remove("show");
+  log("new séance — pile " + pile);
+}
+
+document.getElementById("camBtn").onclick = startCamera;
+document.getElementById("demoBtn").onclick = enterDemo;
+document.getElementById("lockA").onclick = () => lock("A");
+document.getElementById("lockB").onclick = () => lock("B");
+document.getElementById("judge").onclick = judge;
+document.getElementById("resetTry").onclick = clearAttempt;
+document.getElementById("again").onclick = resetGame;
+document.getElementById("tol").oninput = (e) => {
+  document.getElementById("tolVal").textContent = e.target.value;
+};
+
+const swBox = document.getElementById("swatches");
+swatchColors.forEach(([color, name]) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.title = name + " " + color;
+  b.style.background = color;
+  b.onclick = () => {
+    presenting = rgb(color);
+    presentingName = name;
+    showLive(presenting, name);
+    log("presented " + name + " " + color);
+  };
+  swBox.appendChild(b);
+});
+
+renderPile();
+log("ready — tolerance 25. Match = ghosts fly up and cross over. No match = shake and plop.");
+</script>
+</body>
+</html>
