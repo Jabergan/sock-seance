@@ -93,11 +93,16 @@
     background: #333;
   }
   .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .lock-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
   button, .mode {
     font-family: ui-sans-serif, system-ui, sans-serif;
     border-radius: 999px; border: 1px solid var(--line);
     background: #221c2e; color: var(--ink);
     padding: 10px 14px; cursor: pointer; font-size: 14px;
+  }
+  button.lock {
+    min-height: 64px; font-size: 18px; font-weight: 650;
+    border-radius: 16px; width: 100%;
   }
   button.primary { background: #3a2a18; border-color: #6a4e28; color: #f6e2c0; }
   button.good { background: #163024; border-color: #2f6a49; }
@@ -135,54 +140,33 @@
     background: inherit; box-shadow: inset -3px 0 0 rgba(0,0,0,0.12);
   }
   .sock.gone { opacity: 0; transform: translateY(-30px) scale(0.6); transition: 0.6s ease; }
-
-  /* Ghost container */
   .ghosts {
-    height: 140px; position: relative; margin: 8px 0 4px;
-    overflow: hidden;
+    height: 150px; position: relative; margin: 8px 0 4px; overflow: hidden;
   }
   .ghost {
     position: absolute; bottom: 8px; font-size: 42px;
     filter: drop-shadow(0 0 8px rgba(215,231,255,0.45));
-    user-select: none;
+    left: 18%;
+    transition: left 0.55s ease, bottom 0.7s ease, transform 0.55s ease, opacity 0.7s ease;
   }
-  .ghost.a { left: 10%; }
-  .ghost.b { right: 10%; }
-
-  /* MATCH — ghosts fly upward and vanish */
-  @keyframes ghostFlyUp {
-    0%   { transform: translateY(0) scale(1);       opacity: 1; }
-    25%  { transform: translateY(-18px) scale(1.2); opacity: 1; }
-    100% { transform: translateY(-160px) scale(0.2); opacity: 0; }
+  .ghost.b { left: 62%; }
+  .ghost.meet { left: 40%; bottom: 28px; transform: scale(1.2); }
+  .ghost.fly {
+    left: 42%; bottom: 130px; opacity: 0; transform: scale(0.7) rotate(-8deg);
+    transition: left 0.45s ease, bottom 0.7s ease, transform 0.7s ease, opacity 0.7s ease;
   }
-  .ghost.fly-up {
-    animation: ghostFlyUp 0.9s ease-in forwards;
+  .ghost.b.fly { left: 46%; transform: scale(0.7) rotate(10deg); }
+  .ghost.reject {
+    animation: reject 0.7s ease;
   }
-
-  /* NO MATCH — shake outward in opposite dirs, then plop back */
-  @keyframes ghostShakeA {
-    0%   { transform: translateX(0)    rotate(0deg)   translateY(0); }
-    12%  { transform: translateX(22px)  rotate(-14deg) translateY(-5px); }
-    28%  { transform: translateX(-15px) rotate(10deg)  translateY(-2px); }
-    44%  { transform: translateX(16px)  rotate(-7deg)  translateY(-2px); }
-    60%  { transform: translateX(-9px)  rotate(4deg)   translateY(-1px); }
-    76%  { transform: translateX(5px)   rotate(-2deg)  translateY(0); }
-    88%  { transform: translateX(0)     rotate(0deg)   translateY(-7px); }
-    100% { transform: translateX(0)     rotate(0deg)   translateY(0); }
+  @keyframes reject {
+    0% { transform: translateX(0) rotate(0); }
+    20% { transform: translateX(-14px) rotate(-18deg); }
+    40% { transform: translateX(16px) rotate(16deg); }
+    60% { transform: translateX(-10px) rotate(-10deg); }
+    80% { transform: translateY(-18px) rotate(6deg); }
+    100% { transform: translateX(0) rotate(0); }
   }
-  @keyframes ghostShakeB {
-    0%   { transform: translateX(0)    rotate(0deg)  translateY(0); }
-    12%  { transform: translateX(-22px) rotate(14deg) translateY(-5px); }
-    28%  { transform: translateX(15px)  rotate(-10deg) translateY(-2px); }
-    44%  { transform: translateX(-16px) rotate(7deg)  translateY(-2px); }
-    60%  { transform: translateX(9px)   rotate(-4deg) translateY(-1px); }
-    76%  { transform: translateX(-5px)  rotate(2deg)  translateY(0); }
-    88%  { transform: translateX(0)     rotate(0deg)  translateY(-7px); }
-    100% { transform: translateX(0)     rotate(0deg)  translateY(0); }
-  }
-  .ghost.shake-a { animation: ghostShakeA 0.85s ease forwards; }
-  .ghost.shake-b { animation: ghostShakeB 0.85s ease forwards; }
-
   .log {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 12px; line-height: 1.45;
@@ -202,7 +186,7 @@
     display: none; place-items: center; z-index: 5;
   }
   .end.show { display: grid; }
-  .end .card {
+  .end card, .end .card {
     background: #17141f; border: 1px solid #6a4e28; border-radius: 18px;
     padding: 28px; max-width: 460px; text-align: center;
   }
@@ -235,9 +219,11 @@
     <div class="controls">
       <button class="primary" id="camBtn" type="button">Start camera</button>
       <button id="demoBtn" type="button">Demo mode (no camera)</button>
-      <button id="lockA" type="button" disabled style="font-size:18px;padding:16px 20px;width:100%">📸 Lock sock A</button>
-      <button id="lockB" type="button" disabled style="font-size:18px;padding:16px 20px;width:100%">📸 Lock sock B</button>
-      <button id="judge" class="good" type="button" disabled style="font-size:18px;padding:16px 20px;width:100%">👻 Ask the spirits</button>
+      <div class="lock-row">
+        <button class="lock" id="lockA" type="button" disabled>Lock sock A</button>
+        <button class="lock" id="lockB" type="button" disabled>Lock sock B</button>
+      </div>
+      <button id="judge" class="good" type="button" disabled>Ask the spirits</button>
       <button id="resetTry" type="button">Clear attempt</button>
     </div>
     <label class="slider">
@@ -319,7 +305,6 @@ let pile = PILE_START;
 let score = 0;
 let raf = 0;
 let presenting = null;
-let animating = false;
 
 function hex(c) {
   const h = (n) => n.toString(16).padStart(2, "0");
@@ -364,7 +349,7 @@ function setSlot(which, color) {
     blob.style.background = "#222";
     return;
   }
-  hexEl.textContent = hex(color);
+  hexEl.textContent = hex(color) + "  d-ready";
   blob.style.background = hex(color);
 }
 
@@ -408,7 +393,10 @@ async function startCamera() {
   document.getElementById("demoBox").classList.add("hidden");
   document.getElementById("reticle").classList.remove("hidden");
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false
+    });
     video.srcObject = stream;
     await video.play();
     document.getElementById("lockA").disabled = false;
@@ -417,7 +405,7 @@ async function startCamera() {
     cancelAnimationFrame(raf);
     loop();
   } catch (err) {
-    log("camera blocked: " + err.name + " — open via https://");
+    log("camera blocked: " + err.name + " — use Demo mode, or open via http://localhost");
     liveLabel.textContent = "camera blocked";
   }
 }
@@ -436,17 +424,14 @@ function enterDemo() {
   log("demo mode — swatches stand in for held-up socks");
 }
 
-function resetGhost(el) {
-  el.classList.remove("fly-up", "shake-a", "shake-b");
-  el.style.opacity = "";
-}
-
 function lock(which) {
-  if (animating) return;
-  let color = mode === "demo" ? presenting : current;
-  if (!color && mode === "camera") color = sampleFrame();
+  if (mode === "camera") {
+    const fresh = sampleFrame();
+    if (fresh) showLive(fresh, "locked");
+  }
+  const color = mode === "demo" ? presenting : current;
   if (!color) {
-    log("nothing to lock — hold sock in circle and try again");
+    log("nothing to lock — start camera or pick a swatch");
     return;
   }
   if (which === "A") sockA = { ...color };
@@ -456,53 +441,13 @@ function lock(which) {
   document.getElementById("judge").disabled = !(sockA && sockB);
   document.getElementById("verdict").textContent = "";
   document.getElementById("verdict").className = "verdict";
+  resetGhosts();
 }
 
 let presentingName = "";
 
-function animateMatch() {
-  animating = true;
-  resetGhost(ghostA);
-  resetGhost(ghostB);
-  void ghostA.offsetWidth;
-  void ghostB.offsetWidth;
-  ghostA.classList.add("fly-up");
-  ghostB.classList.add("fly-up");
-  setTimeout(() => {
-    score += 1;
-    pile = Math.max(0, pile - 2);
-    renderPile();
-    sockA = null; sockB = null;
-    setSlot("A", null); setSlot("B", null);
-    document.getElementById("judge").disabled = true;
-    setTimeout(() => {
-      resetGhost(ghostA);
-      resetGhost(ghostB);
-      animating = false;
-      if (pile === 0) {
-        document.getElementById("endScore").textContent = String(score);
-        document.getElementById("end").classList.add("show");
-        log("pile empty — séance complete, pairs " + score);
-      }
-    }, 200);
-  }, 950);
-}
-
-function animateMiss() {
-  animating = true;
-  resetGhost(ghostA);
-  resetGhost(ghostB);
-  void ghostA.offsetWidth;
-  void ghostB.offsetWidth;
-  ghostA.classList.add("shake-a");
-  ghostB.classList.add("shake-b");
-  setTimeout(() => {
-    animating = false;
-  }, 900);
-}
-
 function judge() {
-  if (!sockA || !sockB || animating) return;
+  if (!sockA || !sockB) return;
   const d = dist(sockA, sockB);
   const limit = tol();
   const matched = d <= limit;
@@ -512,30 +457,64 @@ function judge() {
   if (matched) {
     v.className = "verdict match";
     v.textContent = "The spirits agree. Distance " + d.toFixed(1) + " ≤ " + limit + ". Pair reunited.";
-    animateMatch();
+    reunite();
   } else {
     v.className = "verdict miss";
     v.textContent = "Not a pair. Distance " + d.toFixed(1) + " > " + limit + ". Pile unchanged.";
-    animateMiss();
+    rejectSpirits();
   }
 }
 
+function resetGhosts() {
+  ghostA.classList.remove("meet", "fly", "reject");
+  ghostB.classList.remove("meet", "fly", "reject");
+}
+
+function reunite() {
+  resetGhosts();
+  ghostA.classList.add("meet");
+  ghostB.classList.add("meet");
+  score += 1;
+  pile = Math.max(0, pile - 2);
+  renderPile();
+  sockA = null; sockB = null;
+  setSlot("A", null); setSlot("B", null);
+  document.getElementById("judge").disabled = true;
+  window.setTimeout(() => {
+    ghostA.classList.add("fly");
+    ghostB.classList.add("fly");
+  }, 520);
+  window.setTimeout(() => {
+    resetGhosts();
+    if (pile === 0) {
+      document.getElementById("endScore").textContent = String(score);
+      document.getElementById("end").classList.add("show");
+      log("pile empty — séance complete, pairs " + score);
+    }
+  }, 1400);
+}
+
+function rejectSpirits() {
+  resetGhosts();
+  void ghostA.offsetWidth;
+  ghostA.classList.add("reject");
+  ghostB.classList.add("reject");
+}
+
 function clearAttempt() {
-  if (animating) return;
   sockA = null; sockB = null;
   setSlot("A", null); setSlot("B", null);
   document.getElementById("judge").disabled = true;
   document.getElementById("verdict").textContent = "";
   document.getElementById("verdict").className = "verdict";
-  resetGhost(ghostA);
-  resetGhost(ghostB);
+  ghostA.classList.remove("meet", "fly", "reject");
+  ghostB.classList.remove("meet", "fly", "reject");
   log("attempt cleared");
 }
 
 function resetGame() {
   pile = PILE_START;
   score = 0;
-  animating = false;
   clearAttempt();
   renderPile();
   document.getElementById("end").classList.remove("show");
@@ -569,7 +548,7 @@ swatchColors.forEach(([color, name]) => {
 });
 
 renderPile();
-log("ready — tolerance 25. Match = ghosts fly up and cross over. No match = shake and plop.");
+log("ready — rear camera, tolerance default 25. Match: ghosts meet and fly off. Miss: they spin and drop back.");
 </script>
 </body>
 </html>
